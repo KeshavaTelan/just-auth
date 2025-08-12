@@ -1,24 +1,25 @@
-# Authentication Package
+# @keshavasilva/just-auth
 
-A reusable React/Next.js authentication package with TypeScript support, featuring automatic token refresh and request interception.
+A lightweight, headless authentication package for React and Next.js applications with automatic token refresh and flexible storage strategies.
 
-## Features
+## ✨ Features
 
-- 🔐 **Token Management**: Automatic access and refresh token handling
-- 🔄 **Auto Refresh**: Seamless token refresh with request queuing
-- 📦 **Type Safe**: Full TypeScript support with comprehensive type definitions
-- 🎣 **React Hooks**: Easy-to-use `useAuth()` hook
-- 🌐 **SSR Ready**: Configurable storage strategies for server-side rendering
-- 🛡️ **Secure**: Best practices for token storage and refresh security
-- 📱 **Framework Agnostic**: Works with React, Next.js, and other React frameworks
+- 🔐 **Headless Authentication** - No UI components, just logic
+- 🔄 **Automatic Token Refresh** - Seamless token renewal on expiry
+- 🏪 **Flexible Storage** - localStorage, cookies, or custom storage strategies
+- 🚫 **Request Queuing** - Prevents race conditions during token refresh
+- 📱 **SSR Compatible** - Works with Next.js server-side rendering
+- 🎯 **TypeScript First** - Full type safety out of the box
+- ⚡ **Zero Dependencies** - Only requires React as peer dependency
+- 🔧 **Configurable** - Customize URLs, storage, and error handling
 
-## Installation
+## 📦 Installation
 
 ```bash
 npm install @keshavasilva/just-auth
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
 ### 1. Wrap your app with AuthProvider
 
@@ -31,11 +32,11 @@ function App() {
       loginUrl="/api/auth/login"
       refreshUrl="/api/auth/refresh"
       onAuthError={(error) => {
-        console.error('Authentication error:', error);
-        // Handle auth errors (e.g., redirect to login)
+        console.log('Authentication error:', error);
+        // Redirect to login page
       }}
     >
-      <YourApp />
+      <YourAppComponents />
     </AuthProvider>
   );
 }
@@ -44,162 +45,278 @@ function App() {
 ### 2. Use the authentication hook
 
 ```tsx
-Use the provided API client for authenticated requests:
-
-```tsx
 import { useAuth } from '@keshavasilva/just-auth';
 
-function LoginComponent() {
-  const { login, logout, user, isAuthenticated, loading } = useAuth();
+function LoginPage() {
+  const { login, loading, error } = useAuth();
 
   const handleLogin = async () => {
     try {
-      await login({ 
-        email: 'user@example.com', 
-        password: 'password' 
-      });
-    } catch (error) {
-      console.error('Login failed:', error);
+      await login({ email: 'user@example.com', password: 'password' });
+      // User is now logged in, tokens are stored automatically
+    } catch (err) {
+      console.error('Login failed:', err);
     }
   };
 
-  if (loading) return <div>Loading...</div>;
-
   return (
     <div>
-      {isAuthenticated ? (
-        <div>
-          <p>Welcome, {user?.email}!</p>
-          <button onClick={logout}>Logout</button>
-        </div>
-      ) : (
-        <button onClick={handleLogin}>Login</button>
-      )}
+      <button onClick={handleLogin} disabled={loading}>
+        {loading ? 'Logging in...' : 'Login'}
+      </button>
+      {error && <p>Error: {error.message}</p>}
     </div>
   );
 }
 ```
 
-## API Reference
+### 3. Access user data and authentication state
+
+```tsx
+import { useAuth } from '@keshavasilva/just-auth';
+
+function Dashboard() {
+  const { user, isAuthenticated, logout, getAccessToken } = useAuth();
+
+  if (!isAuthenticated) {
+    return <div>Please log in</div>;
+  }
+
+  return (
+    <div>
+      <h1>Welcome, {user?.name}!</h1>
+      <button onClick={logout}>Logout</button>
+      
+      {/* Access token for manual API calls */}
+      <button onClick={() => {
+        const token = getAccessToken();
+        console.log('Current token:', token);
+      }}>
+        Get Token
+      </button>
+    </div>
+  );
+}
+```
+
+## 🔧 API Reference
 
 ### AuthProvider Props
 
 | Prop | Type | Required | Description |
 |------|------|----------|-------------|
-| `loginUrl` | `string` | ✅ | URL endpoint for user login |
-| `refreshUrl` | `string` | ✅ | URL endpoint for token refresh |
-| `storageStrategy` | `StorageStrategy` | ❌ | Custom storage strategy (defaults to localStorage) |
-| `onAuthError` | `(error: Error) => void` | ❌ | Callback for authentication errors |
-| `baseUrl` | `string` | ❌ | Base URL for API requests |
-| `timeout` | `number` | ❌ | Request timeout in milliseconds |
+| `loginUrl` | `string` | ✅ | Endpoint for user login |
+| `refreshUrl` | `string` | ✅ | Endpoint for token refresh |
+| `storageStrategy` | `StorageStrategy` | ❌ | Custom storage implementation (defaults to localStorage) |
+| `onAuthError` | `(error: Error) => void` | ❌ | Callback when authentication fails |
+| `children` | `ReactNode` | ✅ | Your app components |
 
-### useAuth Hook
-
-The `useAuth()` hook returns an object with:
+### useAuth Hook Returns
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `user` | `User \| null` | Current authenticated user |
-| `isAuthenticated` | `boolean` | Whether user is authenticated |
+| `user` | `object \| null` | Current user data |
+| `isAuthenticated` | `boolean` | Whether user is logged in |
 | `loading` | `boolean` | Loading state for auth operations |
 | `error` | `Error \| null` | Current error state |
-| `login` | `(payload: LoginPayload) => Promise<void>` | Login function |
-| `logout` | `() => void` | Logout function |
-| `getAccessToken` | `() => string \| null` | Get current access token |
+| `login(payload)` | `(payload: object) => Promise<void>` | Login function |
+| `logout()` | `() => void` | Logout function |
+| `getAccessToken()` | `() => string \| null` | Get current access token |
 
-## Custom Storage Strategy
+## 🏪 Storage Strategies
 
-For server-side rendering or custom storage needs:
-
+### Default (localStorage)
 ```tsx
-import { StorageStrategy } from '@keshavasilva/just-auth';
+<AuthProvider
+  loginUrl="/api/auth/login"
+  refreshUrl="/api/auth/refresh"
+  // Uses localStorage by default
+/>
+```
 
-const cookieStorage: StorageStrategy = {
-  get: (key: string) => {
-    // Get from cookies
-    return getCookie(key);
-  },
-  set: (key: string, value: string) => {
-    // Set cookie
-    setCookie(key, value);
-  },
-  clear: (key: string) => {
-    // Remove cookie
-    removeCookie(key);
-  }
+### Custom Storage (e.g., Cookies for SSR)
+```tsx
+import Cookies from 'js-cookie';
+
+const cookieStorage = {
+  get: (key: string) => Cookies.get(key) || null,
+  set: (key: string, value: string) => Cookies.set(key, value),
+  clear: (key: string) => Cookies.remove(key),
 };
 
 <AuthProvider
   loginUrl="/api/auth/login"
   refreshUrl="/api/auth/refresh"
   storageStrategy={cookieStorage}
->
-  <App />
-</AuthProvider>
+/>
 ```
 
-## Advanced Usage
+### Session Storage
+```tsx
+const sessionStorage = {
+  get: (key: string) => window.sessionStorage.getItem(key),
+  set: (key: string, value: string) => window.sessionStorage.setItem(key, value),
+  clear: (key: string) => window.sessionStorage.removeItem(key),
+};
 
-### Using the API Client Directly
+<AuthProvider
+  storageStrategy={sessionStorage}
+  // ... other props
+/>
+```
+
+## 🔄 Automatic Token Refresh
+
+The package automatically handles token refresh when:
+
+- ✅ **API returns 401** - Automatically refreshes tokens and retries request
+- ✅ **Multiple simultaneous requests** - Queues requests to prevent race conditions
+- ✅ **Transparent to user** - Original request succeeds after refresh
+- ✅ **Graceful failure** - Calls `onAuthError` if refresh fails
 
 ```tsx
-import { ApiClient, TokenManager, RefreshQueue } from '@keshavasilva/just-auth';
-
-const tokenManager = new TokenManager();
-const refreshQueue = new RefreshQueue();
-const apiClient = new ApiClient(
-  'https://api.example.com',
-  '/auth/refresh',
-  tokenManager,
-  refreshQueue
-);
-
-// Make authenticated requests
-const response = await apiClient.get('/protected-endpoint');
+// This request might trigger automatic token refresh
+const response = await fetch('/api/protected-data', {
+  headers: {
+    'Authorization': `Bearer ${getAccessToken()}`
+  }
+});
+// User never sees 401 error - refresh happens automatically
 ```
 
-## Type Definitions
+## 🗄️ Backend API Requirements
 
-### User Interface
+Your backend should implement these endpoints:
 
-```typescript
-interface User {
-  id: string | number;
-  email?: string;
-  name?: string;
-  [key: string]: any;
+### Login Endpoint
+```javascript
+// POST /api/auth/login
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+
+// Response
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+  "user": {
+    "id": 1,
+    "name": "John Doe",
+    "email": "user@example.com"
+  }
 }
 ```
 
-### Auth Response
+### Refresh Endpoint
+```javascript
+// POST /api/auth/refresh
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
 
-```typescript
-interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: User;
-  expiresIn?: number;
+// Response
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..." // optional new refresh token
 }
 ```
 
-## Best Practices
+## 🔐 Security Best Practices
 
-1. **Error Handling**: Always implement the `onAuthError` callback to handle authentication failures gracefully.
+- ✅ **Short-lived access tokens** (15 minutes recommended)
+- ✅ **Longer refresh tokens** (7-30 days)
+- ✅ **Secure HTTP-only cookies** for refresh tokens (server-side)
+- ✅ **HTTPS only** in production
+- ✅ **Token rotation** on refresh
+- ✅ **Logout endpoint** to invalidate tokens
 
-2. **Token Security**: The package uses secure defaults for token storage. For production SSR applications, consider implementing a cookie-based storage strategy.
+## 🌐 Next.js SSR Example
 
-3. **Request Interceptors**: The built-in API client automatically adds Authorization headers and handles token refresh, but you can access the underlying axios instance if needed.
+```tsx
+// pages/_app.tsx
+import { AuthProvider } from '@keshavasilva/just-auth';
+import Cookies from 'js-cookie';
 
-4. **Loading States**: Use the `loading` state from `useAuth()` to show appropriate UI feedback during authentication operations.
+const cookieStorage = {
+  get: (key: string) => Cookies.get(key) || null,
+  set: (key: string, value: string) => Cookies.set(key, value, { secure: true }),
+  clear: (key: string) => Cookies.remove(key),
+};
 
-## Contributing
+export default function App({ Component, pageProps }) {
+  return (
+    <AuthProvider
+      loginUrl="/api/auth/login"
+      refreshUrl="/api/auth/refresh"
+      storageStrategy={cookieStorage}
+      onAuthError={() => {
+        window.location.href = '/login';
+      }}
+    >
+      <Component {...pageProps} />
+    </AuthProvider>
+  );
+}
+```
+
+## 🧪 Error Handling
+
+```tsx
+import { useAuth } from '@keshavasilva/just-auth';
+
+function MyComponent() {
+  const { login, error } = useAuth();
+
+  const handleLogin = async () => {
+    try {
+      await login({ email: 'user@example.com', password: 'wrong' });
+    } catch (err) {
+      // Handle specific errors
+      if (err.response?.status === 401) {
+        alert('Invalid credentials');
+      } else if (err.response?.status === 429) {
+        alert('Too many attempts, try again later');
+      } else {
+        alert('Login failed');
+      }
+    }
+  };
+
+  return (
+    <div>
+      {error && <div className="error">{error.message}</div>}
+      <button onClick={handleLogin}>Login</button>
+    </div>
+  );
+}
+```
+
+## 📱 Token Types Supported
+
+- ✅ **JWT (JSON Web Tokens)** - Most common
+- ✅ **Opaque tokens** - Server-side validation
+- ✅ **Session tokens** - Traditional sessions
+- ✅ **Custom token formats** - Any Bearer token
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+## 📄 License
 
-MIT © [ASYNCHRO]
+MIT © [ASYNCHRO](LICENSE)
+
+## 🔗 Links
+
+- [npm package](https://www.npmjs.com/package/@keshavasilva/just-auth)
+- [GitHub repository](https://github.com/KeshavaTelan/just-auth)
+- [Issues](https://github.com/KeshavaTelan/just-auth/issues)
+
+---
+
+**Made with ❤️ for the React community**

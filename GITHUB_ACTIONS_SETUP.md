@@ -129,5 +129,13 @@ After setting up:
 2. **Version conflicts**: Workflow automatically handles version bumping
 3. **Build failures**: Check the Actions tab for detailed error logs
 4. **Permission issues**: Ensure repository has Actions enabled
+5. **Node.js version conflicts**: Workflow now uses Node.js 20.x and 22.x
+6. **Package-lock.json conflicts**: Workflow regenerates dependencies automatically
+
+### Dependency Issues Fix
+If you encounter `npm ci` errors related to package-lock.json, the workflow now:
+- Removes the existing package-lock.json
+- Runs `npm install` to create a fresh lock file
+- Uses Node.js 20.x+ to avoid engine compatibility issues
 
 Your package will now be automatically tested and published! 🚀

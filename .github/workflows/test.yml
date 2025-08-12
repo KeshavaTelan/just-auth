@@ -1,0 +1,58 @@
+name: Test Pull Request
+
+on:
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run type check
+      run: npm run type-check
+
+    - name: Build package
+      run: npm run build
+
+    - name: Test package structure
+      run: |
+        # Check if dist files exist
+        test -f dist/index.js || exit 1
+        test -f dist/index.mjs || exit 1
+        test -f dist/index.d.ts || exit 1
+        echo "✅ All build outputs exist"
+
+    - name: Test package imports
+      run: |
+        # Test if the built package can be imported
+        node -e "
+          const pkg = require('./dist/index.js');
+          const exports = Object.keys(pkg);
+          console.log('Package exports:', exports);
+          if (!exports.includes('AuthProvider')) throw new Error('AuthProvider not exported');
+          if (!exports.includes('useAuth')) throw new Error('useAuth not exported');
+          console.log('✅ All required exports found');
+        "
+
+    - name: Check package size
+      run: |
+        npm pack --dry-run
+        SIZE=$(npm pack --dry-run 2>&1 | grep "unpacked size" | awk '{print $3 $4}')
+        echo "📦 Package size: $SIZE"

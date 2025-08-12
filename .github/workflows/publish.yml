@@ -1,0 +1,143 @@
+name: Test, Version, and Publish
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run type check
+      run: npm run type-check
+
+    - name: Build package
+      run: npm run build
+
+    - name: Test package structure
+      run: |
+        # Check if dist files exist
+        test -f dist/index.js || exit 1
+        test -f dist/index.mjs || exit 1
+        test -f dist/index.d.ts || exit 1
+        echo "✅ All build outputs exist"
+
+    - name: Test package imports
+      run: |
+        # Test if the built package can be imported
+        node -e "
+          const pkg = require('./dist/index.js');
+          const exports = Object.keys(pkg);
+          console.log('Package exports:', exports);
+          if (!exports.includes('AuthProvider')) throw new Error('AuthProvider not exported');
+          if (!exports.includes('useAuth')) throw new Error('useAuth not exported');
+          console.log('✅ All required exports found');
+        "
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Configure Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Get current version
+      id: current_version
+      run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+    - name: Determine version bump
+      id: version_bump
+      run: |
+        # Check commit messages for version bump type
+        COMMIT_MSG=$(git log -1 --pretty=%B)
+        echo "Commit message: $COMMIT_MSG"
+        
+        if [[ $COMMIT_MSG == *"BREAKING CHANGE"* ]] || [[ $COMMIT_MSG == *"major:"* ]]; then
+          echo "bump=major" >> $GITHUB_OUTPUT
+        elif [[ $COMMIT_MSG == *"feat:"* ]] || [[ $COMMIT_MSG == *"feature:"* ]]; then
+          echo "bump=minor" >> $GITHUB_OUTPUT
+        else
+          echo "bump=patch" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Bump version
+      id: new_version
+      run: |
+        NEW_VERSION=$(npm version ${{ steps.version_bump.outputs.bump }} --no-git-tag-version)
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "New version: $NEW_VERSION"
+
+    - name: Build package
+      run: npm run build
+
+    - name: Publish to npm
+      run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    - name: Commit version bump
+      run: |
+        git add package.json package-lock.json
+        git commit -m "chore: bump version to ${{ steps.new_version.outputs.new_version }} [skip ci]"
+        git push
+
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.new_version.outputs.new_version }}
+        release_name: Release ${{ steps.new_version.outputs.new_version }}
+        body: |
+          ## Changes
+          
+          See the [commit history](https://github.com/${{ github.repository }}/compare/${{ steps.current_version.outputs.version }}...${{ steps.new_version.outputs.new_version }}) for details.
+          
+          ## Installation
+          
+          ```bash
+          npm install just-auth@${{ steps.new_version.outputs.new_version }}
+          ```
+        draft: false
+        prerelease: false

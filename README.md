@@ -15,7 +15,7 @@ A reusable React/Next.js authentication package with TypeScript support, featuri
 ## Installation
 
 ```bash
-npm install just-auth
+npm install @keshavasilva/just-auth
 ```
 
 ## Quick Start
@@ -23,7 +23,7 @@ npm install just-auth
 ### 1. Wrap your app with AuthProvider
 
 ```tsx
-import { AuthProvider } from 'just-auth';
+import { AuthProvider } from '@keshavasilva/just-auth';
 
 function App() {
   return (
@@ -44,7 +44,10 @@ function App() {
 ### 2. Use the authentication hook
 
 ```tsx
-import { useAuth } from 'just-auth';
+Use the provided API client for authenticated requests:
+
+```tsx
+import { useAuth } from '@keshavasilva/just-auth';
 
 function LoginComponent() {
   const { login, logout, user, isAuthenticated, loading } = useAuth();
@@ -109,7 +112,7 @@ The `useAuth()` hook returns an object with:
 For server-side rendering or custom storage needs:
 
 ```tsx
-import { StorageStrategy } from 'just-auth';
+import { StorageStrategy } from '@keshavasilva/just-auth';
 
 const cookieStorage: StorageStrategy = {
   get: (key: string) => {
@@ -140,7 +143,7 @@ const cookieStorage: StorageStrategy = {
 ### Using the API Client Directly
 
 ```tsx
-import { ApiClient, TokenManager, RefreshQueue } from 'just-auth';
+import { ApiClient, TokenManager, RefreshQueue } from '@keshavasilva/just-auth';
 
 const tokenManager = new TokenManager();
 const refreshQueue = new RefreshQueue();

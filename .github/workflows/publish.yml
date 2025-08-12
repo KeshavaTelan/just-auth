@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: write
+  pull-requests: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -67,6 +71,7 @@ jobs:
       with:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
+        persist-credentials: true
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -76,8 +81,8 @@ jobs:
 
     - name: Configure Git
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
 
     - name: Install dependencies
       run: |
@@ -122,7 +127,7 @@ jobs:
       run: |
         git add package.json package-lock.json
         git commit -m "chore: bump version to ${{ steps.new_version.outputs.new_version }} [skip ci]"
-        git push
+        git push origin main
 
     - name: Create GitHub Release
       uses: actions/create-release@v1
@@ -139,7 +144,7 @@ jobs:
           ## Installation
           
           ```bash
-          npm install just-auth@${{ steps.new_version.outputs.new_version }}
+          npm install @keshavasilva/just-auth@${{ steps.new_version.outputs.new_version }}
           ```
         draft: false
         prerelease: false

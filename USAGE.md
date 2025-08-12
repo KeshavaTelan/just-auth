@@ -5,7 +5,7 @@
 ### 1. Install the package
 
 ```bash
-npm install @your-org/auth-package
+npm install @keshavasilva/just-auth
 ```
 
 ### 2. Setup AuthProvider in your React app
